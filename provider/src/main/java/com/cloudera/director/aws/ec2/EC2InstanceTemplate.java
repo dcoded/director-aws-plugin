@@ -502,12 +502,13 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
      */
     NETWORK_INTERFACES(new SimpleConfigurationPropertyBuilder()
         .configKey("networkInterfaceIds")
-        .name("Network Interfaces (IDs)")
+        .name("Additional Network Interfaces (IDs)")
         .required(false)
         .widget(ConfigurationProperty.Widget.OPENMULTI)
+        .defaultValue("")
         .defaultDescription(
-            "Network Interface IDss<br />" +
-                    "<a target='_blank' href='http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html'>More Information</a>"
+            "Network Interface IDs formatted as eni-xxxxxxxx<br />" +
+                    "<a target='_blank' href='http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html'>More Information</a>"
     ).build());
 
     /**

@@ -1463,6 +1463,7 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
         .withGroups(template.getSecurityGroupIds())
         .withDeleteOnTermination(true);
 
+    // AssociatePublicIpAddress option CANNOT be used if additional network interfaces are attached.
     if (getAdditionalNetworkInterfaceSpecifications(template).isEmpty()) {
       network.withAssociatePublicIpAddress(associatePublicIpAddresses);
     }
@@ -1471,6 +1472,14 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
     return network;
   }
 
+
+  /**
+   * Creates instances of additional network interface specifications based on the specified
+   * instance template.
+   *
+   * @param template the instance template
+   * @return collection of instance network interface specifications
+   */
   private Collection<InstanceNetworkInterfaceSpecification>
   getAdditionalNetworkInterfaceSpecifications(EC2InstanceTemplate template) {
 
@@ -1478,15 +1487,23 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
             = new ArrayList<InstanceNetworkInterfaceSpecification>();
 
     List<String> networkInterfaceIds = template.getNetworkInterfaceIds();
+    int deviceIndex = 1;
+    // DeviceIndex 0 is reserved for original network interface definition.
+    // @see #getInstanceNetworkInterfaceSpecification()
 
-    for (int i = 0; i < networkInterfaceIds.size(); i++) {
-      networks.add(new InstanceNetworkInterfaceSpecification()
-              .withNetworkInterfaceId(networkInterfaceIds.get(i))
-              .withDeviceIndex(i + 1)); // Idx=0 is reserved for original network interface above.
+    for (String networkInterfaceId : networkInterfaceIds) {
+      if (networkInterfaceId != null && networkInterfaceId != "") {
+        networks.add(new InstanceNetworkInterfaceSpecification()
+                .withNetworkInterfaceId(networkInterfaceId)
+                .withDeviceIndex(deviceIndex));
+        deviceIndex++;
+      }
     }
 
     return networks;
   }
+
+
 
   private static final String DEVICE_TYPE_EBS = "ebs";
 
