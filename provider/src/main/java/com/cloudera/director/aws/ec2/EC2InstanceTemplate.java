@@ -35,6 +35,7 @@ import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTempl
 import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.TYPE;
 import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.USER_DATA;
 import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.USE_SPOT_INSTANCES;
+import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.NETWORK_INTERFACES;
 
 import com.cloudera.director.spi.v1.compute.ComputeInstanceTemplate;
 import com.cloudera.director.spi.v1.model.ConfigurationProperty;
@@ -491,7 +492,23 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
             "The user data.<br />" +
                 "<a target='_blank' href='http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html'>More Information</a>"
         )
-        .build());
+        .build()),
+
+
+    /**
+     * The user data.
+     *
+     * @see <a href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html">Instance Metadata and User Data</a>
+     */
+    NETWORK_INTERFACES(new SimpleConfigurationPropertyBuilder()
+        .configKey("networkInterfaceIds")
+        .name("Network Interfaces (IDs)")
+        .required(false)
+        .widget(ConfigurationProperty.Widget.OPENMULTI)
+        .defaultDescription(
+            "Network Interface IDss<br />" +
+                    "<a target='_blank' href='http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html'>More Information</a>"
+    ).build());
 
     /**
      * The configuration property.
@@ -619,6 +636,11 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
   private final Optional<String> userData;
 
   /**
+   * Attached network interface IDs.
+   */
+  private final List<String> networkInterfaceIds;
+
+  /**
    * Creates an EC2 instance template with the specified parameters.
    *
    * @param name                        the name of the template
@@ -676,6 +698,9 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
 
     this.userData =
         Optional.fromNullable(getConfigurationValue(USER_DATA, localizationContext));
+
+    this.networkInterfaceIds = EC2InstanceTemplate.CSV_SPLITTER.splitToList(
+            configuration.getConfigurationValue(NETWORK_INTERFACES, localizationContext));
   }
 
   /**
@@ -864,4 +889,11 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
   public Optional<String> getUserData() {
     return userData;
   }
+
+  /**
+   * Returns optional network interface IDs
+   *
+   * @return optional network interface IDs
+   */
+  public List<String> getNetworkInterfaceIds() { return networkInterfaceIds; }
 }

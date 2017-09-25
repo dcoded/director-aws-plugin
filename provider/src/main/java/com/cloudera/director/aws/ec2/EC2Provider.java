@@ -132,16 +132,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -1397,8 +1388,10 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
     String image = template.getImage();
     String type = template.getType();
 
-    InstanceNetworkInterfaceSpecification network =
-        getInstanceNetworkInterfaceSpecification(template);
+    Collection<InstanceNetworkInterfaceSpecification> networks
+            = getAdditionalNetworkInterfaceSpecifications(template);
+
+    networks.add(getInstanceNetworkInterfaceSpecification(template));
 
     List<BlockDeviceMapping> deviceMappings = getBlockDeviceMappings(template);
 
@@ -1415,7 +1408,7 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
         .withMaxCount(1)
         .withMinCount(1)
         .withClientToken(UUID.randomUUID().toString())
-        .withNetworkInterfaces(network)
+        .withNetworkInterfaces(networks)
         .withTagSpecifications(tagSpecifications)
         .withBlockDeviceMappings(deviceMappings)
         .withEbsOptimized(template.isEbsOptimized());
@@ -1458,17 +1451,41 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
    * @param template the instance template
    * @return instance network interface specification
    */
-  private InstanceNetworkInterfaceSpecification getInstanceNetworkInterfaceSpecification(
-      EC2InstanceTemplate template) {
+  private InstanceNetworkInterfaceSpecification
+  getInstanceNetworkInterfaceSpecification(EC2InstanceTemplate template) {
+
+    Collection<InstanceNetworkInterfaceSpecification> additionalInterfaces
+            = getAdditionalNetworkInterfaceSpecifications(template);
+
     InstanceNetworkInterfaceSpecification network = new InstanceNetworkInterfaceSpecification()
         .withDeviceIndex(0)
         .withSubnetId(template.getSubnetId())
         .withGroups(template.getSecurityGroupIds())
-        .withDeleteOnTermination(true)
-        .withAssociatePublicIpAddress(associatePublicIpAddresses);
+        .withDeleteOnTermination(true);
+
+    if (getAdditionalNetworkInterfaceSpecifications(template).isEmpty()) {
+      network.withAssociatePublicIpAddress(associatePublicIpAddresses);
+    }
 
     LOG.info(">> Network interface specification: {}", network);
     return network;
+  }
+
+  private Collection<InstanceNetworkInterfaceSpecification>
+  getAdditionalNetworkInterfaceSpecifications(EC2InstanceTemplate template) {
+
+    Collection<InstanceNetworkInterfaceSpecification> networks
+            = new ArrayList<InstanceNetworkInterfaceSpecification>();
+
+    List<String> networkInterfaceIds = template.getNetworkInterfaceIds();
+
+    for (int i = 0; i < networkInterfaceIds.size(); i++) {
+      networks.add(new InstanceNetworkInterfaceSpecification()
+              .withNetworkInterfaceId(networkInterfaceIds.get(i))
+              .withDeviceIndex(i + 1)); // Idx=0 is reserved for original network interface above.
+    }
+
+    return networks;
   }
 
   private static final String DEVICE_TYPE_EBS = "ebs";
