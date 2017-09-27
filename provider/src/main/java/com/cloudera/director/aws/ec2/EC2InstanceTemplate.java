@@ -502,7 +502,7 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
      */
     NETWORK_INTERFACES(new SimpleConfigurationPropertyBuilder()
         .configKey("networkInterfaceIds")
-        .name("Additional Network Interfaces (IDs)")
+        .name("EC2 Network Interfaces")
         .required(false)
         .widget(ConfigurationProperty.Widget.OPENMULTI)
         .defaultValue("")

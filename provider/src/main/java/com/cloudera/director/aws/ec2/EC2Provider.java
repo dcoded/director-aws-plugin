@@ -1469,6 +1469,7 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
     }
 
     LOG.info(">> Network interface specification: {}", network);
+    LOG.info(">> Additional network interface specifications: {}", additionalInterfaces);
     return network;
   }
 
