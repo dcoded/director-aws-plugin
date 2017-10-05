@@ -15,25 +15,7 @@
 package com.cloudera.director.aws.ec2;
 
 
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.AVAILABILITY_ZONE;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.BLOCK_DURATION_MINUTES;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.EBS_KMS_KEY_ID;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.EBS_VOLUME_COUNT;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.EBS_VOLUME_SIZE_GIB;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.EBS_VOLUME_TYPE;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.ENCRYPT_ADDITIONAL_EBS_VOLUMES;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.IAM_PROFILE_NAME;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.IMAGE;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.KEY_NAME;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.PLACEMENT_GROUP;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.ROOT_VOLUME_SIZE_GB;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.ROOT_VOLUME_TYPE;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.SECURITY_GROUP_IDS;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.SPOT_BID_USD_PER_HR;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.SUBNET_ID;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.TENANCY;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.TYPE;
-import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.USE_SPOT_INSTANCES;
+import static com.cloudera.director.aws.ec2.EC2InstanceTemplate.EC2InstanceTemplateConfigurationPropertyToken.*;
 import static com.cloudera.director.spi.v1.model.util.Validations.addError;
 
 import com.amazonaws.AmazonServiceException;
@@ -78,6 +60,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -255,6 +239,9 @@ public class EC2InstanceTemplateConfigurationValidator implements ConfigurationV
   static final String KMS_KEY_DENIED_MESSAGE =
       "Access denied attempting to verify the KMS Key ID. Ensure kms:DescribeKey permission is granted";
 
+  static final String INVALID_NETWORK_INTERFACE_MSG =
+          "Network interface ID (%s) is not of required format: eni-xxxxxxxx";
+
   /**
    * The EC2 provider.
    */
@@ -301,6 +288,7 @@ public class EC2InstanceTemplateConfigurationValidator implements ConfigurationV
     checkEbsVolumes(kmsClient, configuration, accumulator, localizationContext);
     checkKeyName(ec2Client, configuration, accumulator, localizationContext);
     checkSpotParameters(configuration, accumulator, localizationContext);
+    checkNetworkInterfaces(configuration, accumulator, localizationContext);
   }
 
   /**
@@ -924,5 +912,48 @@ public class EC2InstanceTemplateConfigurationValidator implements ConfigurationV
       addError(accumulator, token, localizationContext,
           null, INVALID_COUNT_DUPLICATES_MSG, token.unwrap().getName(localizationContext), field);
     }
+  }
+
+
+  /**
+   * Verifies that the specified result list has exactly one element, and reports an appropriate
+   * error otherwise.
+   *
+   * @param configuration       the configuration to be validated
+   * @param accumulator         the exception condition accumulator
+   * @param localizationContext the localization context
+   */
+  void checkNetworkInterfaces(Configured configuration,
+                                 PluginExceptionConditionAccumulator accumulator,
+                                 LocalizationContext localizationContext) {
+
+    List<String> networkInterfaces = EC2InstanceTemplate.CSV_SPLITTER.splitToList(
+            configuration.getConfigurationValue(NETWORK_INTERFACES, localizationContext));
+
+
+
+
+    LOG.info(">> Network interfaces found '{}'", networkInterfaces);
+
+    Pattern pattern = Pattern.compile("eni-[0-9a-f]{8,8}");
+
+    for (String networkInterface : networkInterfaces) {
+      LOG.info(">> Describing network interface '{}'", networkInterface);
+      // Verify network id is not blank
+      if (networkInterface == null || networkInterface.length() == 0) {
+        LOG.warn(">> Network interface '{}' is empty", networkInterface);
+        addError(accumulator, NETWORK_INTERFACES, localizationContext,
+                null, NETWORK_INTERFACES.unwrap().getMissingValueErrorMessage(localizationContext));
+      } else {
+        // Network interface ID is auto-generated by AWS in the form eni-xxxxxxxx
+        Matcher matcher = pattern.matcher(networkInterface);
+        if (matcher.find() == false) {
+          LOG.warn(">> network interface '{}' is not a valid interface", networkInterface);
+          addError(accumulator, NETWORK_INTERFACES, localizationContext,
+                  null, INVALID_NETWORK_INTERFACE_MSG, networkInterface);
+        }
+      }
+    }
+
   }
 }

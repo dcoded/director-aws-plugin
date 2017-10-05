@@ -501,11 +501,11 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
      * @see <a href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html">Instance Metadata and User Data</a>
      */
     NETWORK_INTERFACES(new SimpleConfigurationPropertyBuilder()
-        .configKey("networkInterfaceIds")
+        .configKey("networkInterfaces")
         .name("EC2 Network Interfaces")
-        .required(false)
+        .required(true)
         .widget(ConfigurationProperty.Widget.OPENMULTI)
-        .defaultValue("")
+        .type(Property.Type.STRING)
         .defaultDescription(
             "Network Interface IDs formatted as eni-xxxxxxxx<br />" +
                     "<a target='_blank' href='http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html'>More Information</a>"
@@ -639,7 +639,7 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
   /**
    * Attached network interface IDs.
    */
-  private final List<String> networkInterfaceIds;
+  private final List<String> networkInterfaces;
 
   /**
    * Creates an EC2 instance template with the specified parameters.
@@ -700,7 +700,7 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
     this.userData =
         Optional.fromNullable(getConfigurationValue(USER_DATA, localizationContext));
 
-    this.networkInterfaceIds = EC2InstanceTemplate.CSV_SPLITTER.splitToList(
+    this.networkInterfaces = EC2InstanceTemplate.CSV_SPLITTER.splitToList(
             configuration.getConfigurationValue(NETWORK_INTERFACES, localizationContext));
   }
 
@@ -896,5 +896,5 @@ public class EC2InstanceTemplate extends ComputeInstanceTemplate {
    *
    * @return optional network interface IDs
    */
-  public List<String> getNetworkInterfaceIds() { return networkInterfaceIds; }
+  public List<String> getNetworkInterfaces() { return networkInterfaces; }
 }

@@ -1487,15 +1487,17 @@ public class EC2Provider extends AbstractComputeProvider<EC2Instance, EC2Instanc
     Collection<InstanceNetworkInterfaceSpecification> networks
             = new ArrayList<InstanceNetworkInterfaceSpecification>();
 
-    List<String> networkInterfaceIds = template.getNetworkInterfaceIds();
+    List<String> networkInterfaces = template.getNetworkInterfaces();
     int deviceIndex = 1;
     // DeviceIndex 0 is reserved for original network interface definition.
     // @see #getInstanceNetworkInterfaceSpecification()
 
-    for (String networkInterfaceId : networkInterfaceIds) {
-      if (networkInterfaceId != null && networkInterfaceId != "") {
+    LOG.info(">> Found network interface list: {}", networkInterfaces);
+
+    for (String networkInterface : networkInterfaces) {
+      if (networkInterface != null && networkInterface.length() > 0) {
         networks.add(new InstanceNetworkInterfaceSpecification()
-                .withNetworkInterfaceId(networkInterfaceId)
+                .withNetworkInterfaceId(networkInterface)
                 .withDeviceIndex(deviceIndex));
         deviceIndex++;
       }
